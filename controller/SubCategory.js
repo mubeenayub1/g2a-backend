@@ -1,5 +1,7 @@
 import { catchAsyncError } from "../middleware/catchAsyncError.js";
 import { SubCategory } from "../model/SubCategory.js";
+import { Products } from "../model/Product.js";
+
 import cloudinary from "cloudinary";
 cloudinary.v2.config({
     cloud_name: "ddu4sybue",
@@ -20,7 +22,6 @@ export const createSubCategory = catchAsyncError(async (req, res, next) => {
     });
 
 });
-
 
 
 // get SubCategory by id

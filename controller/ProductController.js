@@ -152,6 +152,27 @@ export const getProductbyCategorId = async (req, res, next) => {
     });
   }
 };
+export const getProductbysubCategoryId = async (req, res, next) => {
+  const categoryId = req?.params.subcategoryId;
+  try {
+    const data = await Products.find({ subCategoryId: categoryId })
+      .populate("categoryId")
+      .populate("subCategoryId")
+      .populate("brandId");
+    // const cateforyData = await await Category.findById(categoryId);
+    res.json({
+      status: "success",
+      data: data,
+      // category: cateforyData,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      status: "fail",
+      error: "Internal Server Error",
+    });
+  }
+};
 // delete products
 export const deleteproductsById = async (req, res, next) => {
   const id = req.params.id;

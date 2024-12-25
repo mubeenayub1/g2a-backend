@@ -17,8 +17,8 @@ import http from "http";
 import checkoutRouter from "./routes/CheckoutRouter.js";
 import userRoute from "./routes/userRoute.js";
 import categoryRouter from "./routes/MidCategoryRouter.js";
-
-
+import sellerRoute from "./routes/SellerRouter.js";
+import wishlistRoute from './routes/WishlistRouter.js'
 connectDB();
 
 app.use(cors());
@@ -49,6 +49,8 @@ app.use("/subcategory", subcategoryRouter);
 app.use("/sizeGuide", sizeRouter);
 app.use("/products", productRouter);
 app.use("/checkout", checkoutRouter);
+app.use("/seller", sellerRoute);
+app.use("/wishlist",wishlistRoute)
 app.get("/", async (req, res) => {
   res.send("App Is Running");
 });
