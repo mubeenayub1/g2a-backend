@@ -130,7 +130,27 @@ export const searchProduct = catchAsyncError(async (req, res, next) => {
     res.status(500).json({ error: "Failed to fetch products" });
   }
 });
-
+export const getProductbybrandId = async (req, res, next) => {
+  const brandId = req?.params.brandId;
+  try {
+    const data = await Products.find({ brandId: brandId })
+      .populate("categoryId")
+      .populate("subCategoryId")
+      .populate("brandId");
+    // const cateforyData = await await Category.findById(categoryId);
+    res.json({
+      status: "success",
+      data: data,
+      // category: cateforyData,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      status: "fail",
+      error: "Internal Server Error",
+    });
+  }
+};
 export const getProductbyCategorId = async (req, res, next) => {
   const categoryId = req?.params.categoryId;
   try {
@@ -188,5 +208,93 @@ export const deleteproductsById = async (req, res, next) => {
   } catch (error) {
     console.log(error);
     next(error);
+  }
+};
+
+export const getProductsByCategory = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1; // Default to page 1
+    const limit = parseInt(req.query.limit, 10) || 10; // Default to 10 items per page
+    const skip = (page - 1) * limit;
+
+    // Aggregation pipeline to fetch products with nested category data
+    const products = await Products.aggregate([
+      // Lookup Brand data
+      {
+        $lookup: {
+          from: "brands", // Collection name for Brands
+          localField: "brandId", // Field in Products
+          foreignField: "_id", // Field in Brands
+          as: "brand",
+        },
+      },
+      { $unwind: { path: "$brand", preserveNullAndEmptyArrays: true } },
+
+      // Lookup MidCategory data
+      {
+        $lookup: {
+          from: "midcategories", // Collection name for MidCategory
+          localField: "categoryId", // Field in Products
+          foreignField: "_id", // Field in MidCategory
+          as: "category",
+        },
+      },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+
+      // Lookup SubCategory data
+      {
+        $lookup: {
+          from: "subcategories", // Collection name for SubCategory
+          localField: "subCategoryId", // Field in Products
+          foreignField: "_id", // Field in SubCategory
+          as: "subCategory",
+        },
+      },
+      { $unwind: { path: "$subCategory", preserveNullAndEmptyArrays: true } },
+
+      // Group products by category
+      {
+        $group: {
+          _id: "$category._id",
+          categoryTitle: { $first: "$category.title" },
+          brandName: { $first: "$brand.name" },
+          products: {
+            $push: {
+              _id: "$_id",
+              title: "$title",
+              images: "$images",
+              actualPrice: "$actualPrice",
+              discountPrice: "$discountPrice",
+              gst: "$gst",
+              description: "$description",
+              createdAt: "$createdAt",
+              status: "$status",
+              subCategoryTitle: "$subCategory.title",
+            },
+          },
+        },
+      },
+
+      // Pagination: skip and limit
+      { $skip: skip },
+      { $limit: limit },
+    ]);
+
+    // Count total products
+    const totalProducts = await Products.countDocuments();
+
+    // Send response
+    res.status(200).json({
+      status: "success",
+      data: products,
+      pagination: {
+        total: totalProducts,
+        page,
+        limit,
+        totalPages: Math.ceil(totalProducts / limit),
+      },
+    });
+  } catch (error) {
+    next(error); // Pass error to global error handler
   }
 };

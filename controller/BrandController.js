@@ -64,75 +64,94 @@ export const updateBrand = catchAsyncError(async (req, res, next) => {
 });
 
 // Get All brand
-export const getAllBrand = catchAsyncError(async (req, res, next) => {
-  // try {
-  //   const brands = await Brands.find();
+export const getAllBrand = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1; // Default to page 1
+    const limit = parseInt(req.query.limit, 10) || 10; // Default to 10 items per page
+    const skip = (page - 1) * limit;
 
-  //   res.status(200).json({
-  //     status: "success",
-  //     data: brands,
-  //   });
-  // } catch (error) {
-  //   console.error("Error fetching blogs:", error);
-  //   res.status(500).json({
-  //     status: "fail",
-  //     error: "Internal Server Error",
-  //   });
-  // }
-  const page = parseInt(req.query.page, 10) || 1; // Default to page 1
-  const limit = parseInt(req.query.limit, 10) || 10; // Default to 10 items per page
-  const skip = (page - 1) * limit;
-
-  // Aggregation pipeline with pagination
-  const brands = await Brands.aggregate([
-    // Lookup categories for each blog
-    {
-      $lookup: {
-        from: "categories",
-        localField: "categoryId",
-        foreignField: "_id",
-        as: "categories",
+    // Aggregation pipeline for Brands, MidCategories, and SubCategories
+    const brands = await Brands.aggregate([
+      // Lookup midcategories for each brand
+      {
+        $lookup: {
+          from: "midcategories", // Collection name
+          localField: "_id", // Field in Brands
+          foreignField: "brandId", // Field in MidCategory
+          as: "midcategories",
+        },
       },
-    },
-    // Unwind categories array to process each category individually
-    { $unwind: { path: "$categories", preserveNullAndEmptyArrays: true } },
-    // Lookup subcategories for each category
-    {
-      $lookup: {
-        from: "subcategories",
-        localField: "categories._id",
-        foreignField: "categoryId",
-        as: "categories.subcategories",
+      // Unwind midcategories array to process each midcategory individually
+      { $unwind: { path: "$midcategories", preserveNullAndEmptyArrays: true } },
+      // Lookup subcategories for each midcategory
+      {
+        $lookup: {
+          from: "subcategories", // Collection name
+          localField: "midcategories._id", // Field in MidCategory
+          foreignField: "categoryId", // Field in SubCategory
+          as: "midcategories.subcategories",
+        },
       },
-    },
-    // Re-group categories back into an array after subcategories lookup
-    {
-      $group: {
-        _id: "$_id",
-        title: { $first: "$title" },
-        content: { $first: "$content" },
-        categories: { $push: "$categories" },
+      // Re-group midcategories and subcategories back into an array
+      {
+        $group: {
+          _id: "$_id",
+          name: { $first: "$name" },
+          image: { $first: "$image" },
+          createdAt: { $first: "$createdAt" },
+          status: { $first: "$status" },
+          midcategories: { $push: "$midcategories" },
+        },
       },
-    },
-    // Pagination: skip and limit
-    { $skip: skip },
-    { $limit: limit },
-  ]);
+      // Pagination: skip and limit
+      { $skip: skip },
+      { $limit: limit },
+    ]);
 
-  // Count total documents for pagination metadata
-  const totalbrands = await Brands.countDocuments();
+    // Count total brands for pagination metadata
+    const totalBrandsCount = await Brands.aggregate([
+      {
+        $lookup: {
+          from: "midcategories",
+          localField: "_id",
+          foreignField: "brandId",
+          as: "midcategories",
+        },
+      },
+      { $unwind: { path: "$midcategories", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "midcategories._id",
+          foreignField: "categoryId",
+          as: "midcategories.subcategories",
+        },
+      },
+      {
+        $group: {
+          _id: "$_id",
+        },
+      },
+      { $count: "total" },
+    ]);
 
-  res.status(200).json({
-    status: "success",
-    data: brands,
-    pagination: {
-      total:totalbrands ,
-      page,
-      limit,
-      totalPages: Math.ceil(totalbrands / limit),
-    },
-  });
-});
+    const totalBrands = totalBrandsCount.length > 0 ? totalBrandsCount[0].total : 0;
+
+    // Respond with the data
+    res.status(200).json({
+      status: "success",
+      data: brands,
+      pagination: {
+        total: totalBrands,
+        page,
+        limit,
+        totalPages: Math.ceil(totalBrands / limit),
+      },
+    });
+  } catch (error) {
+    next(error); // Pass error to global error handler
+  }
+};
 
 // delete brand
 export const deleteBrandById = async (req, res, next) => {
