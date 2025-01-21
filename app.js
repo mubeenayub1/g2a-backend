@@ -18,7 +18,8 @@ import checkoutRouter from "./routes/CheckoutRouter.js";
 import userRoute from "./routes/userRoute.js";
 import categoryRouter from "./routes/MidCategoryRouter.js";
 import sellerRoute from "./routes/SellerRouter.js";
-import wishlistRoute from './routes/WishlistRouter.js'
+import wishlistRoute from "./routes/WishlistRouter.js";
+import flashDealRouter from "./routes/FlashDealRouter.js";
 connectDB();
 
 app.use(cors());
@@ -50,19 +51,17 @@ app.use("/sizeGuide", sizeRouter);
 app.use("/products", productRouter);
 app.use("/checkout", checkoutRouter);
 app.use("/seller", sellerRoute);
-app.use("/wishlist",wishlistRoute)
+app.use("/wishlist", wishlistRoute);
+app.use("/flashDeals", flashDealRouter);
 app.get("/", async (req, res) => {
   res.send("App Is Running");
 });
 
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(
-    `Server is running on port ${PORT} in dev  mode`
-  );
+  console.log(`Server is running on port ${PORT} in dev  mode`);
 });
 
 app.use(ErrorMiddleware);
-
 
 // https://github.com/mubeenayub1/g2a-backend.git
